@@ -10,4 +10,5 @@ export default () => ({
     project_id: process.env.INFURA_PROJECT_ID,
   },
   etherscan_api_key: process.env.ETHERSCAN_API_KEY,
+  recent_block_gap: process.env.RECENT_BLOCK_GAP,
 });
