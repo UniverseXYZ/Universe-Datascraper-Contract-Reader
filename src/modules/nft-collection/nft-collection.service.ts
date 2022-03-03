@@ -47,7 +47,7 @@ export class NFTCollectionService {
         { createdAtBlock: { $exists: false } },
         { createdAtBlock: { $eq: null } },
       ],
-      ignoreForRetrieveCreatedAtBlock: false,
+      ignoreForRetrieveCreatedAtBlock: { $in: [null, false] },
     });
   }
 
