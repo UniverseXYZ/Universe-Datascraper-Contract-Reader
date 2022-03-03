@@ -16,12 +16,15 @@ export class EtherscanService {
     }
 
     const etherscan_api_key = this.configService.get('etherscan_api_key');
-
     if (!etherscan_api_key) {
       return { success: false, message: 'Etherscan API key is not defined' };
     }
 
-    const url = `https://api.etherscan.io/api?module=contract&action=getabi&address=${address}&apikey=${etherscan_api_key}`;
+    const network = this.configService.get('ethereum_network');
+    let url = `https://api.etherscan.io/api?module=contract&action=getabi&address=${address}&apikey=${etherscan_api_key}`;
+    if (network !== 'mainnet') {
+      url = `https://api-${network}.etherscan.io/api?module=contract&action=getabi&address=${address}&apikey=${etherscan_api_key}`;
+    }
     const response = await axios.get(url);
     return { success: true, abi: response.data.result };
   }
@@ -46,7 +49,11 @@ export class EtherscanService {
       return { success: false, message: 'Invalid address' };
     }
 
-    const url = `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=${fromBlock}&endblock=${toBlock}&page=${page}&offset=${offset}&sort=${sort}&apikey=${etherscan_api_key}`;
+    const network = this.configService.get('ethereum_network');
+    let url = `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=${fromBlock}&endblock=${toBlock}&page=${page}&offset=${offset}&sort=${sort}&apikey=${etherscan_api_key}`;
+    if (network !== 'mainnet') {
+      url = `https://api-${network}.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=${fromBlock}&endblock=${toBlock}&page=${page}&offset=${offset}&sort=${sort}&apikey=${etherscan_api_key}`;
+    }
     try {
       const response = await axios.get(url);
 
