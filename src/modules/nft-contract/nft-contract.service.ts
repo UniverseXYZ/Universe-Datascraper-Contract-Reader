@@ -46,7 +46,7 @@ export class NFTContractService {
     }
   }
 
-  public async getCollectionInfo(
+  public async getIERC721Metadata(
     contractAddress: string,
     contractType: ContractType,
   ): Promise<{
@@ -78,7 +78,47 @@ export class NFTContractService {
 
       return { success: true, name, symbol };
     } catch (err) {
-      this.logger.log('Get tokenUri from contract failed', JSON.stringify(err));
+      this.logger.log(
+        'Get name/symbol from contract failed',
+        JSON.stringify(err),
+      );
+      return {
+        success: false,
+        error: JSON.stringify(err),
+      };
+    }
+  }
+
+  public async getContractOwner(
+    contractAddress: string,
+    contractType: ContractType,
+  ): Promise<{
+    success: boolean;
+    owner?: string;
+    error?: string;
+  }> {
+    const contractAbi = getContractAbi(contractType);
+    const contract = new ethers.Contract(
+      contractAddress,
+      contractAbi,
+      this.ethService.ether,
+    );
+    if (!contract) {
+      this.logger.log(
+        `Contract instance ${contractAddress} ${contractType} cannot be constructued.`,
+      );
+      return {
+        success: false,
+        error: 'Contract instance cannot be constructued.',
+      };
+    }
+    try {
+      const owner = await contract.owner();
+      // const totalSupply = await contract.totalSupply();
+
+      return { success: true, owner };
+    } catch (err) {
+      this.logger.log('Get owner from contract failed', JSON.stringify(err));
       return {
         success: false,
         error: JSON.stringify(err),

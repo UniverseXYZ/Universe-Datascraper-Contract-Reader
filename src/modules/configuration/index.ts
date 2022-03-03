@@ -9,4 +9,5 @@ export default () => ({
   infura: {
     project_id: process.env.INFURA_PROJECT_ID,
   },
+  etherscan_api_key: process.env.ETHERSCAN_API_KEY,
 });
