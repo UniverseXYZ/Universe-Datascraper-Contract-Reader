@@ -43,7 +43,10 @@ export class NFTCollectionService {
 
   public async findContractWithoutCreateBlock() {
     return await this.nftCollectionModel.findOne({
-      createdAtBlock: null,
+      $or: [
+        { createdAtBlock: { $exists: false } },
+        { createdAtBlock: { $eq: null } },
+      ],
       ignoreForRetrieveCreatedAtBlock: false,
     });
   }
