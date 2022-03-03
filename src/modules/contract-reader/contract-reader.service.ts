@@ -5,16 +5,23 @@ import { NFTContractService } from '../nft-contract/nft-contract.service';
 import { ContractType } from '../nft-contract/contract';
 import { EtherscanService } from '../etherscan/etherscan.service';
 import R from 'ramda';
+import { EthereumService } from '../ethereum/ethereum.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ContractReaderService {
   private readonly logger = new Logger(ContractReaderService.name);
+  private readonly recentBlockGap: number;
 
   constructor(
+    private configService: ConfigService,
     private readonly nftCollectionService: NFTCollectionService,
     private readonly nftContractService: NFTContractService,
     private readonly etherscanService: EtherscanService,
-  ) {}
+    private readonly ethereumService: EthereumService,
+  ) {
+    this.recentBlockGap = this.configService.get('recent_block_gap');
+  }
 
   /**
    * #1. check if there is any collection has no name yet
@@ -84,7 +91,7 @@ export class ContractReaderService {
       const message = result.message
         ? `[CRON Collection Block Number] failed to get the transaction list from: ${contract.contractAddress}; Error: ${result.message}`
         : `[CRON Collection Block Number] failed to get the transaction list from: ${contract.contractAddress}; Error: Unkonwn`;
-      this.logger.error(`[CRON Collection Block Number] ${message}`);
+      this.logger.error(`${message}`);
       return;
     }
 
@@ -92,7 +99,18 @@ export class ContractReaderService {
 
     if (!blockNumber) {
       const message = `[CRON Collection Block Number] failed to get the block number from Etherscan`;
-      this.logger.error(`[CRON Collection Block Number] ${message}`);
+      this.logger.error(`${message}`);
+      return;
+    }
+
+    // As per Ryan, we only take care of the recent created NFT, e.g. created within 1000 blocks
+    const currentBlock = await this.ethereumService.getBlockNum();
+    if (blockNumber < currentBlock - this.recentBlockGap) {
+      const message = `[CRON Collection Block Number] Ignore NFT Collection ${contract.contractAddress}, ${contract.tokenType} as it is too old. Created at ${blockNumber}`;
+      this.logger.log(`${message}`);
+      await this.nftCollectionService.updateIgnoreCreatedAtBlock(
+        contract.contractAddress,
+      );
       return;
     }
 

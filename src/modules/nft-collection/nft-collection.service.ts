@@ -43,10 +43,8 @@ export class NFTCollectionService {
 
   public async findContractWithoutCreateBlock() {
     return await this.nftCollectionModel.findOne({
-      $or: [
-        { createdAtBlock: { $exists: false } },
-        { createdAtBlock: { $eq: null } },
-      ],
+      createdAtBlock: null,
+      ignoreForRetrieveCreatedAtBlock: false,
     });
   }
 
@@ -65,6 +63,25 @@ export class NFTCollectionService {
       this.logger.error(error);
       const message =
         R.prop('message', error) || 'failed to update the block number';
+      return { success: false, message };
+    }
+  }
+
+  public async updateIgnoreCreatedAtBlock(contractAddress: string) {
+    try {
+      const result = await this.nftCollectionModel.updateOne(
+        {
+          contractAddress,
+        },
+        {
+          ignoreForRetrieveCreatedAtBlock: true,
+        },
+      );
+      return { success: true, data: result };
+    } catch (error) {
+      this.logger.error(error);
+      const message =
+        R.prop('message', error) || 'failed to update the ignoreCreatedAtBlock';
       return { success: false, message };
     }
   }
