@@ -100,6 +100,9 @@ export class ContractReaderService {
     if (!blockNumber) {
       const message = `[CRON Collection Block Number] failed to get the block number from Etherscan`;
       this.logger.error(`${message}`);
+      await this.nftCollectionService.updateIgnoreCreatedAtBlock(
+        contract.contractAddress,
+      );
       return;
     }
 
