@@ -107,15 +107,15 @@ export class ContractReaderService {
     }
 
     // As per Ryan, we only take care of the recent created NFT, e.g. created within 1000 blocks
-    const currentBlock = await this.ethereumService.getBlockNum();
-    if (blockNumber < currentBlock - this.recentBlockGap) {
-      const message = `[CRON Collection Block Number] Ignore NFT Collection ${contract.contractAddress}, ${contract.tokenType} as it is too old. Created at ${blockNumber}`;
-      this.logger.log(`${message}`);
-      await this.nftCollectionService.updateIgnoreCreatedAtBlock(
-        contract.contractAddress,
-      );
-      return;
-    }
+    // const currentBlock = await this.ethereumService.getBlockNum();
+    // if (blockNumber < currentBlock - this.recentBlockGap) {
+    //   const message = `[CRON Collection Block Number] Ignore NFT Collection ${contract.contractAddress}, ${contract.tokenType} as it is too old. Created at ${blockNumber}`;
+    //   this.logger.log(`${message}`);
+    //   await this.nftCollectionService.updateIgnoreCreatedAtBlock(
+    //     contract.contractAddress,
+    //   );
+    //   return;
+    // }
 
     await this.nftCollectionService.updateCreateBlock(
       blockNumber,
