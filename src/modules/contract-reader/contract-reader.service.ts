@@ -27,7 +27,6 @@ export class ContractReaderService {
   ) {
     this.recentBlockGap = this.configService.get('recent_block_gap');
     this.queryLimit = this.configService.get('query_limit');
-    this.skippingCounter = this.configService.get('skippingCounterLimit');
   }
 
   /**
