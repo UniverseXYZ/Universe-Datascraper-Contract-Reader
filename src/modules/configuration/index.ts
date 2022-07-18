@@ -16,4 +16,6 @@ export default () => ({
   session_secret: process.env.SESSION_SECRET,
   etherscan_api_key: process.env.ETHERSCAN_API_KEY,
   recent_block_gap: process.env.RECENT_BLOCK_GAP,
+  query_limit: process.env.QUERY_LIMIT,
+  skippingCounterLimit: process.env.SKIPPING_COUNTER_LIMIT,
 });

@@ -16,10 +16,14 @@ export class NFTCollectionService {
     private readonly nftCollectionModel: Model<NFTCollectionDocument>,
   ) {}
 
-  public async findContractWithoutMetadata() {
-    return await this.nftCollectionModel.findOne({
+  public async findContractsWithoutMetadata(limit: number) {
+    return await this.nftCollectionModel.find({
       name: { $exists: false },
       tokenType: { $in: ['ERC721', 'ERC1155'] },
+    },
+    {},
+    {
+      limit,
     });
   }
 
@@ -41,13 +45,17 @@ export class NFTCollectionService {
     );
   }
 
-  public async findContractWithoutCreateBlock() {
-    return await this.nftCollectionModel.findOne({
+  public async findContractWithoutCreateBlock(limit: number) {
+    return await this.nftCollectionModel.find({
       $or: [
         { createdAtBlock: { $exists: false } },
         { createdAtBlock: { $eq: null } },
       ],
       ignoreForRetrieveCreatedAtBlock: { $in: [null, false] },
+    },
+    {},
+    {
+      limit
     });
   }
 
