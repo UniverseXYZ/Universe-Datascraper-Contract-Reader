@@ -106,10 +106,11 @@ export class ContractReaderService {
     } catch(err) {
       this.logger.error("Failed to process metadata:");
       this.logger.error(err);
-    } finally {
-      this.isProcessing = false;
-      this.skippingCounter = 0;
     }
+
+    this.isProcessing = false;
+    this.skippingCounter = 0;
+
   }
 
   /**
