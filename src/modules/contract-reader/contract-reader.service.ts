@@ -58,53 +58,58 @@ export class ContractReaderService {
 
     this.isProcessing = true;
 
-    // Check if there is any unprocessed collection
-    const contracts = await this.nftCollectionService.findContractsWithoutMetadata(this.queryLimit);
+    try {
+      // Check if there is any unprocessed collection
+      const contracts = await this.nftCollectionService.findContractsWithoutMetadata(this.queryLimit);
+      
+      if (!contracts || !contracts.length) {
+        this.logger.log("[CRON Collection Name] No contracts found without metadata");
+        this.isProcessing = false;
+        this.skippingCounter = 0;
+        return;
+      }
+  
+      for (let i = 0; i < contracts.length; i++) {
+        const unprocessed = contracts[i];
+  
+        this.logger.log(
+          `[CRON Collection Name] Processing collection without name: ${unprocessed.contractAddress}, type: ${unprocessed.tokenType}`,
+        );
     
-    if (!contracts || !contracts.length) {
-      this.logger.log("[CRON Collection Name] No contracts found without metadata");
+        // read contract to get name
+        const meta = await this.nftContractService.getIERC721Metadata(
+          unprocessed.contractAddress,
+          unprocessed.tokenType as ContractType,
+        );
+        const name = meta.success ? meta.name : null;
+        const symbol = meta.success ? meta.symbol : null;
+    
+        // read contract to get owner
+        const moreMeta = await this.nftContractService.getContractOwner(
+          unprocessed.contractAddress,
+          unprocessed.tokenType as ContractType,
+        );
+        const owner = moreMeta.success ? moreMeta.owner : null;
+    
+        // save to DB
+        await this.nftCollectionService.updateContractMetadata(
+          unprocessed.contractAddress,
+          name,
+          symbol,
+          owner,
+        );    
+  
+        this.logger.log(
+          `[CRON Collection Name] Processed collection succefully`,
+        );
+      }
+    } catch(err) {
+      this.logger.error("Failed to process metadata:");
+      this.logger.error(err);
+    } finally {
       this.isProcessing = false;
       this.skippingCounter = 0;
-      return;
     }
-
-    for (let i = 0; i < contracts.length; i++) {
-      const unprocessed = contracts[i];
-
-      this.logger.log(
-        `[CRON Collection Name] Processing collection without name: ${unprocessed.contractAddress}, type: ${unprocessed.tokenType}`,
-      );
-  
-      // read contract to get name
-      const meta = await this.nftContractService.getIERC721Metadata(
-        unprocessed.contractAddress,
-        unprocessed.tokenType as ContractType,
-      );
-      const name = meta.success ? meta.name : null;
-      const symbol = meta.success ? meta.symbol : null;
-  
-      // read contract to get owner
-      const moreMeta = await this.nftContractService.getContractOwner(
-        unprocessed.contractAddress,
-        unprocessed.tokenType as ContractType,
-      );
-      const owner = moreMeta.success ? moreMeta.owner : null;
-  
-      // save to DB
-      await this.nftCollectionService.updateContractMetadata(
-        unprocessed.contractAddress,
-        name,
-        symbol,
-        owner,
-      );    
-
-      this.logger.log(
-        `[CRON Collection Name] Processed collection succefully`,
-      );
-    }
-
-    this.isProcessing = false;
-    this.skippingCounter = 0;
   }
 
   /**
