@@ -39,6 +39,11 @@ export class NFTContractService {
       return { success: true, tokenUri };
     } catch (err) {
       this.logger.log('Get tokenUri from contract failed', JSON.stringify(err));
+
+      if (err?.error?.reason === 'timeout' || err?.error?.code === 429) {
+        return await this.ethService.connectToProvider(() => this.getTokenUri(contractAddress, contractType, tokenId));
+      }
+
       return {
         success: false,
         error: JSON.stringify(err),
@@ -82,6 +87,9 @@ export class NFTContractService {
         'Get name/symbol from contract failed',
         JSON.stringify(err),
       );
+      if (err?.error?.reason === 'timeout' || err?.error?.code === 429) {
+        return await this.ethService.connectToProvider(() => this.getIERC721Metadata(contractAddress, contractType));
+      }
       return {
         success: false,
         error: JSON.stringify(err),
@@ -107,6 +115,7 @@ export class NFTContractService {
       this.logger.log(
         `Contract instance ${contractAddress} ${contractType} cannot be constructued.`,
       );
+
       return {
         success: false,
         error: 'Contract instance cannot be constructued.',
@@ -119,6 +128,11 @@ export class NFTContractService {
       return { success: true, owner };
     } catch (err) {
       this.logger.log('Get owner from contract failed', JSON.stringify(err));
+
+      if (err?.error?.reason === 'timeout' || err?.error?.code === 429) {
+        return await this.ethService.connectToProvider(() => this.getContractOwner(contractAddress, contractType));
+      }
+
       return {
         success: false,
         error: JSON.stringify(err),

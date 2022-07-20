@@ -16,7 +16,9 @@ export class ContractReaderService {
   private readonly queryLimit: number;
   
   private skippingCounter: number = 0;
+  private skippingCounter2: number = 0;
   private isProcessing: boolean = false;
+  private isProcessing2: boolean = false;
 
   constructor(
     private configService: ConfigService,
@@ -36,6 +38,12 @@ export class ContractReaderService {
    */
   @Cron(CronExpression.EVERY_10_SECONDS)
   public async checkCollection() {
+    const { ether } = this.ethereumService;
+    if (!ether) {
+      this.logger.warn("[CRON Collection Name] Provider isn't available. Skipping this iteration.");
+      return;
+    }
+
     if (this.isProcessing) {
       if (
         this.skippingCounter <
@@ -104,13 +112,12 @@ export class ContractReaderService {
         );
       }
     } catch(err) {
-      this.logger.error("Failed to process metadata:");
+      this.logger.error("[CRON Collection Name] Failed to process:");
       this.logger.error(err);
     }
 
     this.isProcessing = false;
     this.skippingCounter = 0;
-
   }
 
   /**
@@ -120,58 +127,102 @@ export class ContractReaderService {
    */
   @Cron(CronExpression.EVERY_10_SECONDS)
   public async checkContractWithoutCreateBlock() {
-    const contracts = await this.nftCollectionService.findContractWithoutCreateBlock(this.queryLimit);
-
-    if (!contracts || !contracts.length) {
+    const { ether } = this.ethereumService;
+    if (!ether) {
+      this.logger.warn("[CRON Collection Block Number] Provider isn't available. Skipping this iteration.");
       return;
     }
 
-    for (let i = 0; i < contracts.length; i++) {
-      const contract = contracts[i];
-      
-      this.logger.log(
-        `[CRON Collection Block Number] Find one collection without block number: ${contract.contractAddress}, type: ${contract.tokenType}`,
-      );
-  
-      const result = await this.etherscanService.getTxList(
-        contract.contractAddress,
-      );
-  
-      if (!result.success) {
-        const message = result.message
-          ? `[CRON Collection Block Number] failed to get the transaction list from: ${contract.contractAddress}; Error: ${result.message}`
-          : `[CRON Collection Block Number] failed to get the transaction list from: ${contract.contractAddress}; Error: Unkonwn`;
-        this.logger.error(`${message}`);
-        return;
-      }
-  
-      const blockNumber: number = R.path(['data', '0', 'blockNumber'], result);
-  
-      if (!blockNumber) {
-        const message = `[CRON Collection Block Number] failed to get the block number from Etherscan`;
-        this.logger.error(`${message}`);
-        await this.nftCollectionService.updateIgnoreCreatedAtBlock(
-          contract.contractAddress,
+    if (this.isProcessing2) {
+      if (
+        this.skippingCounter2 <
+        Number(this.configService.get('skippingCounterLimit'))
+      ) {
+        this.skippingCounter2++;
+        this.logger.log(
+          `[CRON Collection Block Number] Task is in process, skipping (${this.skippingCounter2}) ...`,
         );
-        return;
+      } else {
+        // when the counter reaches the limit, restart the pod.
+        this.logger.log(
+          `[CRON Collection Block Number] Task skipping counter reached its limit. The process is not responsive, restarting...`,
+        );
+        Utils.shutdown();
       }
 
-      // As per Ryan, we only take care of the recent created NFT, e.g. created within 1000 blocks
-      // const currentBlock = await this.ethereumService.getBlockNum();
-      // if (blockNumber < currentBlock - this.recentBlockGap) {
-      //   const message = `[CRON Collection Block Number] Ignore NFT Collection ${contract.contractAddress}, ${contract.tokenType} as it is too old. Created at ${blockNumber}`;
-      //   this.logger.log(`${message}`);
-      //   await this.nftCollectionService.updateIgnoreCreatedAtBlock(
-      //     contract.contractAddress,
-      //   );
-      //   return;
-      // }
-  
-      await this.nftCollectionService.updateCreateBlock(
-        blockNumber,
-        contract.contractAddress,
-      );
+      return;
     }
 
+    this.isProcessing2 = true;
+
+    try {
+      const contracts = await this.nftCollectionService.findContractWithoutCreateBlock(this.queryLimit);
+
+      if (!contracts || !contracts.length) {
+        this.logger.log("[CRON Collection Block Number] No contracts found without block number");
+        this.isProcessing2 = false;
+        this.skippingCounter2 = 0;
+        return;
+      }
+  
+      for (let i = 0; i < contracts.length; i++) {
+        const contract = contracts[i];
+        
+        this.logger.log(
+          `[CRON Collection Block Number] Find one collection without block number: ${contract.contractAddress}, type: ${contract.tokenType}`,
+        );
+    
+        const result = await this.etherscanService.getTxList(
+          contract.contractAddress,
+        );
+    
+        if (!result.success) {
+          const message = result.message
+            ? `[CRON Collection Block Number] failed to get the transaction list from: ${contract.contractAddress}; Error: ${result.message}`
+            : `[CRON Collection Block Number] failed to get the transaction list from: ${contract.contractAddress}; Error: Unkonwn`;
+          this.logger.error(`${message}`);
+
+          this.isProcessing2 = false;
+          this.skippingCounter2 = 0;      
+          return;
+        }
+    
+        const blockNumber: number = R.path(['data', '0', 'blockNumber'], result);
+    
+        if (!blockNumber) {
+          const message = `[CRON Collection Block Number] failed to get the block number from Etherscan`;
+          this.logger.error(`${message}`);
+          await this.nftCollectionService.updateIgnoreCreatedAtBlock(
+            contract.contractAddress,
+          );
+
+          this.isProcessing2 = false;
+          this.skippingCounter2 = 0;      
+          return;
+        }
+  
+        // As per Ryan, we only take care of the recent created NFT, e.g. created within 1000 blocks
+        // const currentBlock = await this.ethereumService.getBlockNum();
+        // if (blockNumber < currentBlock - this.recentBlockGap) {
+        //   const message = `[CRON Collection Block Number] Ignore NFT Collection ${contract.contractAddress}, ${contract.tokenType} as it is too old. Created at ${blockNumber}`;
+        //   this.logger.log(`${message}`);
+        //   await this.nftCollectionService.updateIgnoreCreatedAtBlock(
+        //     contract.contractAddress,
+        //   );
+        //   return;
+        // }
+    
+        await this.nftCollectionService.updateCreateBlock(
+          blockNumber,
+          contract.contractAddress,
+        );
+      }  
+    } catch(err) {
+      this.logger.error("[CRON Collection Block Number] Failed to process:");
+      this.logger.error(err);
+    }
+
+    this.isProcessing2 = false;
+    this.skippingCounter2 = 0;
   }
 }
