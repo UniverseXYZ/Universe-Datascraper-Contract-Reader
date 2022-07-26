@@ -40,7 +40,7 @@ export class NFTContractService {
     } catch (err) {
       this.logger.log('Get tokenUri from contract failed', JSON.stringify(err));
 
-      if (err?.error?.reason === 'timeout' || err?.error?.code === 429) {
+      if (err?.error?.reason === 'timeout' || err?.error?.code === 429 || err?.error?.status === 403 || err?.error?.code === 'TIMEOUT') {
         return await this.ethService.connectToProvider(() => this.getTokenUri(contractAddress, contractType, tokenId));
       }
 
@@ -87,7 +87,7 @@ export class NFTContractService {
         'Get name/symbol from contract failed',
         JSON.stringify(err),
       );
-      if (err?.error?.reason === 'timeout' || err?.error?.code === 429) {
+      if (err?.error?.reason === 'timeout' || err?.error?.code === 429 || err?.error?.status === 403 || err?.error?.code === 'TIMEOUT') {
         return await this.ethService.connectToProvider(() => this.getIERC721Metadata(contractAddress, contractType));
       }
       return {
@@ -129,7 +129,7 @@ export class NFTContractService {
     } catch (err) {
       this.logger.log('Get owner from contract failed', JSON.stringify(err));
 
-      if (err?.error?.reason === 'timeout' || err?.error?.code === 429) {
+      if (err?.error?.reason === 'timeout' || err?.error?.code === 429 || err?.error?.status === 403 || err?.error?.code === 'TIMEOUT') {
         return await this.ethService.connectToProvider(() => this.getContractOwner(contractAddress, contractType));
       }
 
